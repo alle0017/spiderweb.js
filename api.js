@@ -59,4 +59,3 @@ export const append = (name, props = {}, node = document.body)=>{
       }
       return el;
 }
-//hello on spiderweb.js!!!
