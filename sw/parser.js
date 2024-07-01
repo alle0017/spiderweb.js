@@ -204,7 +204,6 @@ export class Parser {
                   directBindings: this.#directBind,
                   bindingKey: this.#bindingKey,
             }
-
             this.#indirectBind = {};
             this.#directBind = {};
             this.#eventsMap = {};
@@ -520,6 +519,7 @@ export class Parser {
                   
             }
             this.#ifIdMap[id] = descriptor; 
+            
             if( ifNode.hasChildNodes() ){
                   for( const c of ifNode.childNodes ){
                         this.#mergeMaps( 
@@ -690,12 +690,15 @@ export class Parser {
                   this.#add( map, node, false, scope, params );
                   return map;
             }
-            this.#searchEvents( node, scope, args );
+            this.#searchEvents( node, scope, params );
             if( node.hasAttribute(Parser.IF_PROPERTY) ){
                   this.#mergeMaps( 
                         map, 
                         this.#addIfToMap( this.#ifMap, node, args, scope, params  )
                   );
+                  if( nodeToString.match( Parser.#TEMPLATE_REGEX ) ){
+                        this.#add( map, node, true, scope, params );
+                  }
                   return map;
             }
 

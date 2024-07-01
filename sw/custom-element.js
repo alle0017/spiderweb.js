@@ -1,4 +1,5 @@
-import { Parser } from "./parser.js";
+import { Parser, warning } from "./parser.js";
+
 /**@param {string} html */
 export const createCustomElement = ( name, html, extender = {}, watch = [] )=>{
       
@@ -17,13 +18,12 @@ export const createCustomElement = ( name, html, extender = {}, watch = [] )=>{
             constructor(){
                   super();
 
-
                   this.descriptor = Parser.parse( html );
                   this.#shadow = this.attachShadow({ mode: 'open' });
                   this.#shadow.appendChild( 
                         this.descriptor.dom
                   );
-                  for( const e of this.descriptor.events ){
+                  for( const e of Object.values( this.descriptor.events ) ){
                         const handler = ((ev)=>{
                               e.value.bind(this)(ev);
                               if( e.once ){
@@ -34,13 +34,10 @@ export const createCustomElement = ( name, html, extender = {}, watch = [] )=>{
                   }
                   this.#createReactiveProperties();
                   if( extender && typeof extender == 'object' ){
-                        for( const [k,v] of Object.entries( extender ) ){
-                              if( this[k] ){
-                                    warning( `property ${k} already exists in ${name}. The redefinition is ignored` );
-                                    continue;
-                              }
-                              this[k] = v;
-                        }
+                        Object.defineProperties( 
+                              this,
+                              Object.getOwnPropertyDescriptors( extender ) 
+                        )
                   }
             }
             #createReactiveProperties(){
@@ -128,6 +125,14 @@ export const createCustomElement = ( name, html, extender = {}, watch = [] )=>{
                         }
                   }
                   this.#initializeInternalReferences( this.descriptor.dom );
+                  if( this.onenter && typeof this.onenter == 'function' ){
+                        this.onenter();
+                  }
+            }
+            disconnectedCallback(){
+                  if( this.onleave && typeof this.onleave == 'function' ){
+                        this.onleave();
+                  }
             }
             attributeChangedCallback( name, oldValue, newValue ){
                   if( oldValue == newValue )
@@ -166,9 +171,9 @@ export const createCustomElement = ( name, html, extender = {}, watch = [] )=>{
             #addHTMLHook( node, i ){
                   this.#updateHTMLHook( node );
                   this.#updateNodeBinding( node );
+                  
                   for( const el of node.querySelectorAll(`.${this.descriptor.condKey}`) ){
                         const descriptor = this.descriptor.idCondMap[ el.getAttribute( this.descriptor.key ) ];
-
                         this.#addHTMLHook( descriptor.copies[i].ifCpy, i );
                         if( !descriptor.copies[i].elseCpy )
                               continue;
@@ -338,7 +343,13 @@ export const createCustomElement = ( name, html, extender = {}, watch = [] )=>{
                         }else{
                               
                               for( const c of n.descriptor.copies ){
-                                    c.root.innerHTML = n.descriptor.value.bind(this)(...c.scopeValues);
+                                    if( !c.root )
+                                          continue;
+                                    if( !n.descriptor.isAttribute ){
+                                          c.root.innerHTML = n.descriptor.value.bind(this)(...c.scopeValues);
+                                    }else{
+                                          c.root.setAttribute( n.descriptor.attributeName, n.descriptor.value.bind(this)(...c.scopeValues) )
+                                    }
                               }
                         }
                   }
