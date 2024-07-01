@@ -15,6 +15,7 @@ export const createCustomElement = ( name, html, extender = {}, watch = [] )=>{
 
             /**@type {ShadowRoot} */
             #shadow;
+            
             constructor(){
                   super();
 
@@ -32,12 +33,35 @@ export const createCustomElement = ( name, html, extender = {}, watch = [] )=>{
                         }).bind(this);
                         e.node.addEventListener( e.name, handler );
                   }
+
+                  this.#deepCpyExtenderObj( extender );
                   this.#createReactiveProperties();
-                  if( extender && typeof extender == 'object' ){
-                        Object.defineProperties( 
+                  
+            }
+            #deepCpyExtenderObj( obj ){
+                  if( !obj && typeof obj !== 'object' )
+                        return;
+                        /*Object.defineProperties( 
                               this,
-                              Object.getOwnPropertyDescriptors( extender ) 
-                        )
+                              Object.getOwnPropertyDescriptors( extender ),
+                        );*/
+                  for( const k of Object.keys(obj) ){
+                        const d = Object.getOwnPropertyDescriptor( obj, k );
+                        
+                        if( !('get' in d) && !('set' in d)  && typeof d.value !== 'function' ){
+                              Object.defineProperty( 
+                                    this,
+                                    k,
+                                    JSON.parse( JSON.stringify( d ) ),  
+                              ); 
+                        }else{
+                              Object.defineProperty( 
+                                    this,
+                                    k,
+                                    d,  
+                              ); 
+                        }
+
                   }
             }
             #createReactiveProperties(){
@@ -112,27 +136,36 @@ export const createCustomElement = ( name, html, extender = {}, watch = [] )=>{
                   for( const ref of node.querySelectorAll( `[${Parser.REF_PROPERTY}]` ) ){
                         const k = ref.getAttribute( Parser.REF_PROPERTY );
                         if( this.refs[k] ){
-                              warning( `reference named ${k} already exists in ${name}. The redefinition is ignored` );
                               continue;
                         }
                         this.refs[k] = ref;
                   }
             }
             connectedCallback(){
+                  const newNodeObserver = new MutationObserver(((mutation)=>{
+                        this.$emit('node-added', {
+                              nodeList: mutation.addedNodes
+                        })
+                  }).bind(this));
+                  newNodeObserver.observe( this, { childList: true } );
                   if( this.hasAttributes() ){
                         for( const attr of this.attributes ){
                               this[attr.name] = attr.value;
                         }
                   }
                   this.#initializeInternalReferences( this.descriptor.dom );
+                  this.$emit('before-enter', { target: this });
                   if( this.onenter && typeof this.onenter == 'function' ){
                         this.onenter();
                   }
+                  this.$emit('enter', { target: this });
             }
             disconnectedCallback(){
+                  this.$emit('before-leave', { target: this });
                   if( this.onleave && typeof this.onleave == 'function' ){
                         this.onleave();
                   }
+                  this.$emit('leave', { target: this });
             }
             attributeChangedCallback( name, oldValue, newValue ){
                   if( oldValue == newValue )
@@ -471,6 +504,9 @@ export const createCustomElement = ( name, html, extender = {}, watch = [] )=>{
                               }
                         }
                   }
+            }
+            $emit( eventName, eventData ){
+                  this.dispatchEvent( new CustomEvent( eventName, eventData ) );
             }
             
       }

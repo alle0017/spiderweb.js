@@ -1,2 +1,1 @@
-import "./api.js";
-import "./sw/ui.js"
+import {define} from "./api.js";
