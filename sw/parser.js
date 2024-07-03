@@ -207,7 +207,7 @@ export class Parser {
             this.#indirectBind = {};
             this.#directBind = {};
             this.#eventsMap = {};
-            this.#events = {};
+            this.#events = [];
             this.#forMap = {};
             this.#forPropertiesMap = {};
             this.#ifIdMap = {};
