@@ -6,7 +6,7 @@ import MDParser from "./sw/md.js";
  * @typedef {Object} ElementDescriptor
  * @property {string} template
  * @property {string} name
- * @property {Object.<string, any> & HTMLElement } props
+ * @property {Object.<string, any> & import("./sw/custom-element.js").HTMLCustomElement } props
  * @property {boolean} markdown
  * @property {Array<string>} watched
  */
@@ -36,7 +36,7 @@ export const create = (name)=>{
  * @param {string} name
  * @param {Record<string,string>} props
  * @param {HTMLElement} node
- * @returns {HTMLCustomElement | undefined}
+ * @returns {import("./sw/custom-element.js").HTMLCustomElement | undefined}
  */
 export const append = (name, props = {}, node = document.body)=>{
       const el = CustomElementRegistry.create(name);

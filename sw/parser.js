@@ -207,7 +207,7 @@ export class Parser {
             this.#indirectBind = {};
             this.#directBind = {};
             this.#eventsMap = {};
-            this.#events = {};
+            this.#events = [];
             this.#forMap = {};
             this.#forPropertiesMap = {};
             this.#ifIdMap = {};
@@ -245,13 +245,14 @@ export class Parser {
       static #getUsedProperties( inlineUsage, scope, args ){
             const props = inlineUsage.match( Parser.#PROPERTY_REGEX ) || [];
             const loopParam = [];
+            const res = [];
             for( let i = 0; i < args.length; i++ ){
                   if( inlineUsage.match( new RegExp( args[ i ], 'ig' ) ) ){
                         loopParam.push( scope[ i ] );
                   }
             }
 
-            return [ ...props, ...loopParam ].map( 
+            [ ...props, ...loopParam ].map( 
                   prop => prop
                         .replace( 'this.', '' )
                         .replace('this[', '' )
@@ -260,7 +261,12 @@ export class Parser {
                         .replace( "'", '' )
                         .replace(/"/ig, '')
                         .trim()
-            );
+            ).forEach( v =>{
+                  if( res.indexOf(v) >= 0 )
+                        return;
+                  res.push(v);
+            });
+            return res;
       }
       /**
       * parse the arguments used inside a for attribute, the first element of the array is the variable used inside the for, the last is the array itself
@@ -487,7 +493,7 @@ export class Parser {
        * @param {*} scope 
        * @param {*} params
        */
-      static #addIfToMap( map, ifNode, args, scope, params = [] ){
+      static #addIfToMap( map, ifNode, args, scope = [], params = [] ){
             const propMap = {};
             const inline = ifNode.getAttribute(Parser.IF_PROPERTY)
             const rootNode = document.createElement( 'span' );
@@ -516,7 +522,6 @@ export class Parser {
                         map[prop] = [];
                   }
                   map[prop].push( descriptor );
-                  
             }
             this.#ifIdMap[id] = descriptor; 
             
