@@ -144,19 +144,15 @@ export class Router {
       static unmap( routes ){}
       /**
        * 
-       * @param {string} event 
        * @param {Function} listener 
        */
       static addEventListener( listener ){
+            //@ts-ignore
             window.addEventListener('route-enter', listener);
       }
 }
 
 /**
- * /**
- * @typedef RouteOpt
- * @property {string} component
- * @property {boolean?} unmountOnLeave
  */
 
 /**
