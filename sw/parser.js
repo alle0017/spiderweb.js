@@ -1,12 +1,16 @@
-
+/**
+ * @param {string} message 
+ * @returns 
+ */
 export const warning = ( message )=> console.warn(`[spider-web-log]: ${message}`);
+
 /**
 * @typedef {Object} IfPropertyMap
-* @property {HTMLElement} root
+* @property {HTMLElement} rootNode
 * @property {HTMLElement} ifNode
 * @property {HTMLElement} elseNode
 * @property {Function} condition
-* @property {HTMLElement[]} copies
+* @property {{ ifCpy: HTMLElement, elseCpy: HTMLElement, root: HTMLElement, scope: any[]}[]} copies
  */
 /**
  * @typedef {Object} LoopedPropertyReference
@@ -22,12 +26,14 @@ export const warning = ( message )=> console.warn(`[spider-web-log]: ${message}`
  * @property {Array<string>} scope
  * @property {Array<LoopedPropertyReference>} copies
  */
+
 /**
  * @typedef {Object.<string, Array<PropertyDescriptor>>} PropertiesUsageMap
  */
+
 /**
  * @typedef {Object} PropertySoftRef
- * @property {PropertyDescriptor} descriptor
+ * @property {PropertyDescriptor | LoopDescriptor} descriptor
  * @property {boolean} isFor
  * @property {number} key
 */
@@ -43,16 +49,75 @@ export const warning = ( message )=> console.warn(`[spider-web-log]: ${message}`
 /**
  * @typedef {Object.<string, Array<LoopDescriptor>>} LoopMap
  */
+/**
+ * @typedef {Object} Binding
+ * @property {HTMLElement} node
+ * @property {string} event
+ * @property {string} prop
+ */
+/**
+ * @typedef {Object} LoopBinding
+ * @property {HTMLElement[]} copies
+ * @property {string} event
+ * @property {string} prop
+ */
+
+/**
+ * @typedef {Object} EventDescriptor
+ * @property {boolean} once,
+ * @property {string[]} scope,
+ * @property {Function} value,
+ * @property {string} name
+ */
+
+/**
+ * @typedef {Object} EventDescriptorRef
+ * @property {boolean} once,
+ * @property {Function} value,
+ * @property {string} name
+ * @property {HTMLElement} node
+ */
+
+/**
+ * @typedef {Object} ReactivePropertiesDescriptor
+ * 
+ * @property {HTMLElement} dom
+ * @property {Map<string, PropertyDescriptor[]>} properties
+ * @property {Map<string, LoopDescriptor[]>} loops
+ * @property {Map<string, PropertyDescriptor[]>} loopsProperties
+ * @property {string} key
+ * @property {string} condKey
+ * @property {Map<string, IfPropertyMap[]>} conditionals
+ * @property {Map<number, IfPropertyMap>} idCondMap
+ * @property {Map<number, number>} conditionalRefSet
+ * @property {Map<number,EventDescriptor[]>} eventsMap
+ * @property {string} eventsKey
+ * @property {EventDescriptorRef[]} events
+ * @property {Map<string, LoopBinding[]>} bindings
+ * @property {Map<string, Binding[]>} directBindings
+ * @property {string} bindingKey
+ */
+
 
 export class Parser {
-      /**@readonly */
+      /**
+       * @readonly 
+       */
       static REF_PROPERTY = 'ref';
-      /**@readonly */
+      /**
+       * @readonly 
+       */
       static FOR_PROPERTY = 'for';
-      /**@readonly */
+      /**
+       * @readonly 
+       */
       static IF_PROPERTY = 'if';
-      /**@readonly */
+
+      /**
+       * @readonly 
+       */
       static TWO_WAY_DATA_BINDING = 'bind';
+
       /**
       * @readonly
       */
@@ -101,40 +166,49 @@ export class Parser {
       * @type {string}
       */
       static #conditionalClassKey;
-      /**@type {Object.<string,IfPropertyMap>}*/
-      static #ifMap = {};
-      /**@type {Object.<number,IfPropertyMap>}*/
-      static #ifIdMap = {};
-      /**@type {Object.<number, number>}*/
-      static #condIdKeyMap = {};
-      /**@type {LoopMap} */
-      static #forMap = {};
+
+      /**@type {Map<string,IfPropertyMap[]>}*/
+      static #ifMap = new Map();
+
+      /**@type {Map<number,IfPropertyMap>}*/
+      static #ifIdMap = new Map();
+      
+      /**@type {Map<number,number>}*/
+      static #condIdKeyMap = new Map();
+
+      /**@type {Map<string, LoopDescriptor[]>} */
+      static #forMap = new Map();
+
       static #id = 1;
-      /**@type {PropertiesUsageMap} */
-      static #forPropertiesMap = {};
-      /**events used inside loops */
-      static #eventsMap = {};
-      /**events that are not used inside for */
+
+      /**@type {Map<string, PropertyDescriptor[]>} */
+      static #forPropertiesMap = new Map();
+      /**
+       * events used inside loops 
+       * @type {Map<number,EventDescriptor[]>}
+       */
+      static #eventsMap = new Map();
+      /**
+       * events that are not used inside for 
+       * @type {EventDescriptorRef[]}
+       */
       static #events = [];
-      /**bindings not initialize inside loop 
-      * @type {Object.<string, Array<{
-      *     node: HTMLElement,
-      *     event: string,
-      *     prop: string,
-      * }>>}
+
+      /**
+      * bindings not initialize inside loop 
+      * @type {Map<string, Array<Binding>>}
       */
-      static #directBind = {};
-      /**bindings that are used inside loop 
-      * @type {Object.<string, Array<{
-      *     copies: HTMLElement[],
-      *     event: string,
-      *     prop: string,
-      * }>>}
+      static #directBind = new Map();
+
+      /**
+      * bindings that are used inside loop 
+      * @type {Map<string, Array<LoopBinding>>}
       */
-      static #indirectBind = {};
+      static #indirectBind = new Map();
 
       /**@hideconstructor*/
       constructor(){}
+
       /**
        * return all the properties used inside a string, representing an html component
        * @param {string} html 
@@ -181,12 +255,17 @@ export class Parser {
        */
       static parse( html ){
             const dom = new DOMParser().parseFromString( html, "text/html" ).body;
+
             this.#duplicationKey = this.#adjustKey( dom, this.#BASE_KEY );
             this.#conditionalClassKey = this.#adjustKey( dom, this.#BASE_COND_CLASS );
             this.#eventKey = this.#adjustKey( dom, this.#EVENT_CLASS );
             this.#bindingKey = this.#adjustKey( dom, this.#BASE_BIND_KEY );
 
             const propertiesMap = this.#traverse( dom );
+
+            /**
+             * @type {ReactivePropertiesDescriptor}
+             */
             const descriptor = {
                   dom,
                   properties: propertiesMap,
@@ -204,20 +283,22 @@ export class Parser {
                   directBindings: this.#directBind,
                   bindingKey: this.#bindingKey,
             }
-            this.#indirectBind = {};
-            this.#directBind = {};
-            this.#eventsMap = {};
-            this.#events = {};
-            this.#forMap = {};
-            this.#forPropertiesMap = {};
-            this.#ifIdMap = {};
-            this.#ifMap = {};
-            this.#condIdKeyMap = {};
+            this.#indirectBind = new Map();
+            this.#directBind = new Map();
+            this.#eventsMap = new Map();
+            this.#events = [];
+            this.#forMap = new Map();
+            this.#forPropertiesMap = new Map();
+            this.#ifIdMap = new Map();
+            this.#ifMap = new Map();
+            this.#condIdKeyMap = new Map();
 
             return descriptor;
       }
       /**
        * return the baseKey, modified until it isn't found inside the dom
+       * @param {string} baseKey
+       * @param {HTMLElement} dom 
        */
       static #adjustKey( dom, baseKey ){
             while( dom.querySelector( `[${baseKey}]` ) || dom.querySelector( `.${baseKey}` ) ){
@@ -225,9 +306,11 @@ export class Parser {
             }
             return baseKey;
       }
+
       /**
       * return the string representation of a node with the syntax <node-name [node-property-name]="[node-property-value]"/>
       * @param {HTMLElement} node  
+      * @returns {string}
       */
       static #nodeToString( node ){
             if( !node.attributes )
@@ -238,20 +321,25 @@ export class Parser {
             }
             return `<${node.outerHTML} ${prop}/>`;
       }
+
       /**
        * return the property used inside the '{{}}' syntax
        * @param {string} inlineUsage  
-       * */
+       * @param {*} args 
+       * @param {*} scope 
+       */
       static #getUsedProperties( inlineUsage, scope, args ){
             const props = inlineUsage.match( Parser.#PROPERTY_REGEX ) || [];
             const loopParam = [];
+            const res = [];
+
             for( let i = 0; i < args.length; i++ ){
                   if( inlineUsage.match( new RegExp( args[ i ], 'ig' ) ) ){
                         loopParam.push( scope[ i ] );
                   }
             }
 
-            return [ ...props, ...loopParam ].map( 
+            [ ...props, ...loopParam ].map( 
                   prop => prop
                         .replace( 'this.', '' )
                         .replace('this[', '' )
@@ -260,22 +348,38 @@ export class Parser {
                         .replace( "'", '' )
                         .replace(/"/ig, '')
                         .trim()
-            );
+            ).forEach( v =>{
+                  if( res.indexOf(v) >= 0 )
+                        return;
+                  res.push(v);
+            });
+
+            return res;
       }
+
       /**
       * parse the arguments used inside a for attribute, the first element of the array is the variable used inside the for, the last is the array itself
       * @param {string} inline  
-      * @return {[string, 'of', string]}
+      * @return {[string, 'of', string] | []}
       */
       static #parseForArgs( inline ){
             if( !inline.match(/[a-zA-Z0-9\$_]+ of [a-zA-Z0-9\$_]+/) ){
                   return [];
             }
-            return inline.split(' ').map( s => s.trim() );
+            /**
+             * @type {[string, 'of', string]}
+             */
+            const res = ['','of',''];
+            const param = inline.split(' ').map( s => s.trim() );
+
+            res[0] = param[0];
+            res[2] = param[2];
+
+            return res;
       }
       /**
        * add a node used inside a for-looped tag, to the refs of the loop
-       * @param {PropertyDescriptor} descriptorRef 
+       * @param {PropertyDescriptor | LoopDescriptor} descriptorRef 
        * @param {string[]} scope 
        * @param {boolean} isFor if the element saved is for
        * @example
@@ -294,16 +398,19 @@ export class Parser {
       ```  
        */
       static #addReferenceToLoop( descriptorRef, scope, isFor ){
-            const loop = this.#forMap[ scope[ scope.length - 1 ] ];
-            const key = descriptorRef.rootNode.getAttribute( this.#duplicationKey ) || this.#id;
+            const loop = this.#forMap.get( scope[ scope.length - 1 ] );
+            const key = parseInt( descriptorRef.rootNode.getAttribute( this.#duplicationKey ) ) || this.#id;
+
             loop[ loop.length - 1 ].refs.push({
                   key,
                   descriptor: descriptorRef,
                   isFor,
             });
+
             if( descriptorRef.rootNode.hasAttribute( this.#duplicationKey ) )
                   return;
-            descriptorRef.rootNode.setAttribute( this.#duplicationKey, this.#id );
+
+            descriptorRef.rootNode.setAttribute( this.#duplicationKey, this.#id + '' );
             this.#id++;
       }
       /**
@@ -311,7 +418,7 @@ export class Parser {
        * @param {HTMLElement} rootNode html node that host the attribute. can be span by default or the actual element with the variable attribute
        * @param {string} inlineFunction function that will be executed to define the template value
        * @param {string[]} scope array of arrays names 
-       * @param {string | undefined} attributeName the attribute name, if specified,that is dynamically generated
+       * @param {string | undefined} attributeName the attribute name, if specified, that is dynamically generated `<div {{attributeName}}="id">`
        * @param {string[]} args variables used as parameters for the function
        * @param {boolean} isAttribute 
        */
@@ -327,21 +434,26 @@ export class Parser {
       }
       /**
        * 
-       * @param {PropertiesUsageMap} map 
+       * @param {Map<string,PropertyDescriptor[]>} map 
        * @param {Object} descriptor 
        * @param {string} prop the property that is used in the inline function
        * @param {string[]} scope 
        */
       static #addToMap( map, descriptor, prop, scope = [] ){
-            if( !map[ prop ] ){
-                  map[ prop ] = [];
+            let property = map.get( prop );
+
+            if( !property ){
+                  property = [];
+                  map.set( prop, property );
             }
-            map[ prop ].push(descriptor);
+
+            property.push(descriptor);
+
             if( scope.length <= 0 )
                   return;
 
             this.#addReferenceToLoop(
-                  map[prop][map[ prop ].length - 1],
+                  property[property.length - 1],
                   scope,
                   false,
             );
@@ -350,24 +462,31 @@ export class Parser {
 
       /**
        * 
-       * @param {PropertiesUsageMap} map 
+       * @param {Map<string,PropertyDescriptor[]>} map 
        * @param {HTMLElement} node 
-       * @param {boolean} isAttribute 
-       * @returns 
+       * @param {boolean} isAttribute whether the reference is an html attribute
+       * @param {any[]} [args=[]] 
+       * @param {any[]} [scope=[]] 
+       * 
+       * @returns {void}
        */
       static #add( map, node, isAttribute, scope = [], args = [] ){
             
             if( isAttribute ){
                   for( const attr of node.attributes ){
+
                         if( !attr.value.match( Parser.#TEMPLATE_REGEX ) )
                               continue;
+
                         const descriptor = this.#createPropertyDescriptor( 
                               node, 
                               attr.value, 
                               scope, 
                               attr.name, 
                               args, 
-                              true );
+                              true 
+                        );
+
                         this
                               .#getUsedProperties( attr.value, scope, args )
                               .forEach( prop => this.#addToMap( 
@@ -375,7 +494,7 @@ export class Parser {
                                     descriptor, 
                                     prop,
                                     scope,
-                              ) );
+                              ));
                   }
                   return;
             }
@@ -388,15 +507,18 @@ export class Parser {
             let prev = 0;
 
             for( let i = 0; i < matches.length; i++ ){
-                  const span = document.createElement( 'span' );
-                  let current = text.indexOf( matches[i], prev );
+                  const span = document.createElement( 'span' );                  
                   const descriptor = this.#createPropertyDescriptor( 
                         span, 
                         matches[i], 
                         scope, 
                         undefined, 
                         args, 
-                        false );
+                        false 
+                  );
+                  let current = text.indexOf( matches[i], prev );
+                  
+
                   newNodeList.push( 
                         text.substring( 
                               prev,
@@ -427,10 +549,16 @@ export class Parser {
        */
       static #setForProperties( node, args, scope, params ){
             const rootNode = document.createElement( 'span' );
+            let ref = this.#forMap.get( args[2] );
+
             node.replaceWith( rootNode );
-            if( !this.#forMap[args[2]] )
-                  this.#forMap[args[2]] = []; 
-            this.#forMap[args[2]].push( {
+
+            if( !ref ){
+                  ref = []; 
+                  this.#forMap.set( args[2], ref );
+            }
+
+            ref.push( {
                   rootNode,
                   model: node,
                   scope: [...scope, args[2]],
@@ -442,26 +570,38 @@ export class Parser {
 
             if( scope.length > 0 ){
                   this.#addReferenceToLoop(
-                        this.#forMap[args[2]][this.#forMap[args[2]].length - 1],
+                        ref[ref.length - 1],
                         scope,
                         true,
                   );
             }
+
             if( node.hasChildNodes() ){
                   for( const child of node.childNodes ){
+
                         this.#mergeMaps(
                               this.#forPropertiesMap,
-                              this.#traverse( child, args, [...scope, args[2]], [...params, args[0]] ),
-                        )
+                              this.#traverse( /**@type {HTMLElement}*/(child), args, [...scope, args[2]], [...params, args[0]] ),
+                        );
                   }
             }
       }
+      /**
+       * @template T
+       * @param {Map<T,unknown[]>} map 
+       * @param {Map<T,unknown[]>} childMap 
+       */
       static #mergeMaps( map, childMap ){
-            for( let [k,v] of Object.entries( childMap ) ){
-                  if( map[k] ){
-                        map[k] = [ ...map[k], ...v ]
+            const entries = [...childMap.entries()];
+
+            for( let i = 0; i < entries.length; i++ ){
+
+                  let [k,v] = entries[i];
+
+                  if( map.has(k) ){
+                        map.set( k, [ ...map.get(k), ...v ] );
                   }else{
-                        map[k] = v
+                        map.set( k, v );
                   }
             }
       }
@@ -482,16 +622,16 @@ export class Parser {
       }
       /**
        * 
-       * @param {*} map 
+       * @param {Map<string,IfPropertyMap[]>} map 
        * @param {HTMLElement} ifNode 
        * @param {*} scope 
        * @param {*} params
        */
-      static #addIfToMap( map, ifNode, args, scope, params = [] ){
-            const propMap = {};
+      static #addIfToMap( map, ifNode, args, scope = [], params = [] ){
+            const propMap = new Map();
             const inline = ifNode.getAttribute(Parser.IF_PROPERTY)
             const rootNode = document.createElement( 'span' );
-            const elseNode =  ifNode.parentNode.querySelector( `[else="${ifNode.getAttribute('e-id')}"]`);
+            const elseNode =  /**@type {HTMLElement}*/(ifNode.parentNode.querySelector( `[else="${ifNode.getAttribute('e-id')}"]`));
             const id = this.#id;
             const props = this.#getUsedProperties( 
                                     inline, 
@@ -499,7 +639,7 @@ export class Parser {
                                     params
                               );
             const descriptor = {
-                  root: rootNode,
+                  rootNode,
                   ifNode,
                   elseNode,
                   condition: new Function( ...params, `return ${inline}` ),
@@ -507,25 +647,25 @@ export class Parser {
             }
             
             rootNode.classList.add( this.#conditionalClassKey );
-            rootNode.setAttribute(this.#duplicationKey, id );
+            rootNode.setAttribute(this.#duplicationKey, id + '' );
             this.#id++;
             ifNode.replaceWith( rootNode );
             
             for( const prop of props ){
-                  if( !map[prop] ){
-                        map[prop] = [];
+                  const property = map.get( prop );
+                  if( !property ){
+                        map.set( prop, [] );
                   }
-                  map[prop].push( descriptor );
-                  
+                  property.push( descriptor );
             }
-            this.#ifIdMap[id] = descriptor; 
+            this.#ifIdMap.set( id, descriptor ); 
             
             if( ifNode.hasChildNodes() ){
                   for( const c of ifNode.childNodes ){
                         this.#mergeMaps( 
                               propMap, 
                               this.#traverse(
-                                    c,
+                                    /**@type {HTMLElement}*/(c),
                                     args,
                                     scope,
                                     params
@@ -537,7 +677,7 @@ export class Parser {
                   this.#mergeMaps( 
                         propMap, 
                         this.#traverse(
-                              elseNode,
+                              /**@type {HTMLElement}*/(elseNode),
                               args,
                               scope,
                               params
@@ -547,11 +687,11 @@ export class Parser {
             }
             if( scope.length > 0 ){
                   for( const n of ifNode.querySelectorAll(`[${this.#duplicationKey}]`) ){
-                        this.#condIdKeyMap[n.getAttribute(this.#duplicationKey)] = id;
+                        this.#condIdKeyMap.set( parseInt( n.getAttribute(this.#duplicationKey) ), id );
                   }
                   if( elseNode ){
                         for( const n of elseNode.querySelectorAll(`[${this.#duplicationKey}]`) ){
-                              this.#condIdKeyMap[n.getAttribute(this.#duplicationKey)] = id;
+                              this.#condIdKeyMap.set( parseInt( n.getAttribute(this.#duplicationKey) ), id );
                         }
                   }
             }
@@ -583,16 +723,16 @@ export class Parser {
                   }
                   if( scope.length > 0 ){
                         if( !node.hasAttribute( this.#eventKey ) ){
-                              node.setAttribute( this.#eventKey, this.#id );
-                              this.#eventsMap[ this.#id ] = [{
+                              node.setAttribute( this.#eventKey, this.#id + '' );
+                              this.#eventsMap.set( this.#id, [{
                                     once,
                                     scope,
                                     value,
                                     name: ev,
-                              }];
+                              }]);
                               this.#id++;
                         }else{
-                              this.#eventsMap[ node.getAttribute( this.#eventKey ) ].push({
+                              this.#eventsMap.get( parseInt( node.getAttribute( this.#eventKey ) ) ).push({
                                     once,
                                     scope,
                                     value,
@@ -621,84 +761,117 @@ export class Parser {
             let prop = bind.match(/@prop *= *[a-zA-Z0-9$_]+/ig);
             let event = bind.match(/@event *= *[a-zA-Z0-9$_]+/ig);
 
+            let dataStr;
+            let propStr;
+            let eventStr;
+
             if( !data ){
                   warning(' invalid binding. No property to bind');
                   return undefined;
             }
-            data = data[0]
+
+            
+            dataStr = data[0]
                   .replace('@data', '')
                   .replace('=', '')
                   .replace(' ', '');
 
             if( prop ){
-                  prop = prop[0]
+                  propStr = prop[0]
                   .replace('@prop', '')
                   .replace('=', '')
                   .replace(' ', '');
             }else{
-                  prop = 'value';
+                  propStr = 'value';
             }
             if( event ){
-                  event = event[0]
+                  eventStr = event[0]
                   .replace('@event', '')
                   .replace('=', '')
                   .replace(' ', '');
             }else{
-                  event = 'change';
+                  eventStr = 'change';
             }
 
             return {
-                  data,
-                  prop,
-                  event,
+                  data: dataStr,
+                  prop: propStr,
+                  event: eventStr,
             }
       }
       static #setBinding( node, scope = [] ){
             const { data, prop, event } = this.#parseBindingProperties( 
                   node.getAttribute( Parser.TWO_WAY_DATA_BINDING ) 
             );
+
             if( data && scope.length > 0 ){
-                  if( !this.#indirectBind[data] )
-                        this.#indirectBind[data] = {};
-                  this.#indirectBind[data][this.#id] = {
-                              copies: [],
-                              event,
-                              prop,
-                        };
+                  let bind = this.#indirectBind.get( data );
+
+                  if( !bind ){
+                        bind = [];
+                        this.#indirectBind.set( data, bind );
+                  }
+
+                  bind[this.#id] = {
+                        copies: [],
+                        event,
+                        prop,
+                  };
+
                   node.setAttribute( Parser.TWO_WAY_DATA_BINDING, data );
                   node.setAttribute( Parser.#bindingKey, this.#id );
+
                   this.#id++;
+
             }else if( data ){
-                  if( !this.#directBind[data] )
-                        this.#directBind[data] = [];
-                  this.#directBind[data].push({
-                              node,
-                              event,
-                              prop,
-                        });
+                  const bind = this.#directBind.get( data ) || [];
+
+                  if( bind.length <= 0 )
+                        this.#directBind.set( data, bind );
+
+                  bind.push({
+                        node,
+                        event,
+                        prop,
+                  });
                   
             }
       }
-      /**@param {HTMLElement} node  */
-      static #traverse( node, args, scope, params ){
-            /**@type {PropertiesUsageMap} */
-            const map = {};
+      /**
+       * @param {HTMLElement} node  
+       * @param {*} args 
+       * @param {*} scope
+       * @param {string[]} params parameters used to create function
+       * 
+       * @returns {Map<string,PropertyDescriptor[]>}
+       */
+      static #traverse( node, args = undefined, scope = undefined, params = undefined ){
+
+            /**@type {Map<string,PropertyDescriptor[]>} */
+            const map = new Map();
             const nodeToString = Parser.#nodeToString( node );
+
             if( node.nodeType == Node.TEXT_NODE ){
+
                   if( !node.textContent.match( Parser.#TEMPLATE_REGEX ) ) 
                         return map;
+
                   this.#add( map, node, false, scope, params );
                   return map;
             }
+
             this.#searchEvents( node, scope, params );
+
             if( node.hasAttribute(Parser.IF_PROPERTY) ){
                   this.#mergeMaps( 
                         map, 
                         this.#addIfToMap( this.#ifMap, node, args, scope, params  )
                   );
+
                   if( nodeToString.match( Parser.#TEMPLATE_REGEX ) ){
                         this.#add( map, node, true, scope, params );
                   }
+
                   return map;
             }
 
@@ -708,11 +881,12 @@ export class Parser {
                   }else{
                         this.#traverseFor( node, [], [] );
                   }
-                  return {}
+                  return new Map();
             }
             if( node.hasAttribute( Parser.TWO_WAY_DATA_BINDING ) ){
                   this.#setBinding( node, scope );
             }
+
             if( nodeToString.match( Parser.#TEMPLATE_REGEX ) ){
                   this.#add( map, node, true, scope, params );
             }
@@ -721,7 +895,7 @@ export class Parser {
                   return map;
 
             for( const c of [...node.childNodes] ){
-                  const cMap = this.#traverse(c, args, scope, params );
+                  const cMap = this.#traverse( (/**@type {HTMLElement}*/(c)), args, scope, params );
                   this.#mergeMaps( map, cMap );
             }
             return map;
