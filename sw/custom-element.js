@@ -1,17 +1,27 @@
-import { Parser, warning } from "./parser.js";
+//import { Parser, warning } from "./parser.js";
+import { Parser, warning } from "./compiler.js";
 import HTMLReactiveElement from "./html-reactive-element.js";
 
-/**@param {string} html */
+/**
+ * @param {string} name
+ * @param {string} html 
+ * @param {Object} extender,
+ * @param {string[]} watch
+ */
 export const createCustomElement = ( name, html, extender = {}, watch = [] )=>{
-      
-      const watched = new Set([
-            ...watch, 
-            ...Parser.getUsedProperties( html )
-      ]);
 
-      class HTMLCustomElement extends HTMLReactiveElement( html, watch, extender ) {
+      const parser = new Parser();
+      const cloneable = parser.createReactiveCloneable( html );
+
+
+      for( let i=0; i < watch.length; i++ ){
+            cloneable.usedProperties.add( watch[ i ] );
+      }
+
+
+      class HTMLCustomElement extends HTMLReactiveElement( name, [...cloneable.usedProperties.values()], extender, cloneable ) {
             
-            static observedAttributes = [...watched.values()];
+
             /**@type {Object.<string,HTMLElement>} */
             refs = {};
             #alreadyExecuted = false;
@@ -137,6 +147,7 @@ export const createCustomElement = ( name, html, extender = {}, watch = [] )=>{
                   document.body.removeEventListener( 'keydown', this.#shortcuts[ shortcutKey ].down );
             }
       }
+
       customElements.define( name, HTMLCustomElement );
 }
 

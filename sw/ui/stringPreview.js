@@ -17,7 +17,7 @@ define({
             get text(){
                   return this._fullStr;
             },
-            set text(value){
+            set text( value ){
                   if( !value || typeof value !== 'string' || value === this._str )
                         return;
                   this._fullStr = value;

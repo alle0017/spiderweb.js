@@ -1,0 +1,93 @@
+/**
+* @typedef {Object} IfPropertyMap
+* @property {HTMLElement} rootNode
+* @property {HTMLElement} ifNode
+* @property {HTMLElement} elseNode
+* @property {Function} condition
+* @property {{ ifCpy: HTMLElement, elseCpy: HTMLElement, root: HTMLElement, scope: any[]}[]} copies
+ */
+/**
+ * @typedef {Object} LoopedPropertyReference
+ * @property {Array<any>} scopeValues
+ * @property {HTMLElement} root
+*/
+/**
+ * @typedef {Object} PropertyDescriptor
+ * @property {boolean} isAttribute
+ * @property {string} attributeName
+ * @property {Function} value
+ * @property {HTMLElement} rootNode
+ * @property {Array<string>} scope
+ * @property {Array<LoopedPropertyReference>} copies
+ */
+
+/**
+ * @typedef {Object.<string, Array<PropertyDescriptor>>} PropertiesUsageMap
+ */
+
+/**
+ * @typedef {Object} PropertySoftRef
+ * @property {PropertyDescriptor | LoopDescriptor} descriptor
+ * @property {boolean} isFor
+ * @property {number} key
+*/
+/**
+ * @typedef {Object} LoopDescriptor
+ * @property {HTMLElement} rootNode
+ * @property {HTMLElement} model
+ * @property {Array<string>} scope
+ * @property {string} variable
+ * @property {Array<PropertySoftRef>} refs
+ * @property {Array<PropertySoftRef>} copies
+ */
+/**
+ * @typedef {Object.<string, Array<LoopDescriptor>>} LoopMap
+ */
+/**
+ * @typedef {Object} Binding
+ * @property {HTMLElement} node
+ * @property {string} event
+ * @property {string} prop
+ */
+/**
+ * @typedef {Object} LoopBinding
+ * @property {HTMLElement[]} copies
+ * @property {string} event
+ * @property {string} prop
+ */
+
+/**
+ * @typedef {Object} EventDescriptor
+ * @property {boolean} once,
+ * @property {string[]} scope,
+ * @property {Function} value,
+ * @property {string} name
+ */
+
+/**
+ * @typedef {Object} EventDescriptorRef
+ * @property {boolean} once,
+ * @property {Function} value,
+ * @property {string} name
+ * @property {HTMLElement} node
+ */
+
+/**
+ * @typedef {Object} ReactivePropertiesDescriptor
+ * 
+ * @property {HTMLElement} dom
+ * @property {Map<string, PropertyDescriptor[]>} properties
+ * @property {Map<string, LoopDescriptor[]>} loops
+ * @property {Map<string, PropertyDescriptor[]>} loopsProperties
+ * @property {string} key
+ * @property {string} condKey
+ * @property {Map<string, IfPropertyMap[]>} conditionals
+ * @property {Map<number, IfPropertyMap>} idCondMap
+ * @property {Map<number, number>} conditionalRefSet
+ * @property {Map<number,EventDescriptor[]>} eventsMap
+ * @property {string} eventsKey
+ * @property {EventDescriptorRef[]} events
+ * @property {Map<string, LoopBinding[]>} bindings
+ * @property {Map<string, Binding[]>} directBindings
+ * @property {string} bindingKey
+ */
