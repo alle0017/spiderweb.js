@@ -1,18 +1,23 @@
 import { Parser } from "./compiler.js";
 import Cloner from "./cloner.js";
 
-/**
- * @param {string} name
- * @param {Object} extender
- * @param {string[]} watched 
- * @param {ReactiveCloneable} cloneable
- * @returns 
- */
-const HTMLReactiveElement = ( name, watched, extender, cloneable ) =>{
-      //console.log( watched );
-      return class C extends HTMLElement {
+
+export default class HTMLReactiveElement extends HTMLElement {
             
-            static observedAttributes = watched;
+            /**
+             * @type {string[]}
+             */
+            static observedAttributes = [];//watched;
+
+            /**
+             * @type {ReactiveCloneable}
+             */
+            static cloneable = null;
+
+            /**
+             * @type {Object}
+             */
+            //static extender = {};
 
             /**@type {Object.<string,HTMLElement | HTMLElement[]>} */
             refs = {};
@@ -32,50 +37,64 @@ const HTMLReactiveElement = ( name, watched, extender, cloneable ) =>{
              * @returns { x is  { isFor: true, descriptor: Ref<LoopDescriptor>, key: number,}}
              */
             static #isRefToLoop = x => x.isFor;
+
+            /**
+             * @param {typeof HTMLReactiveElement} target
+             * @param {Object} extender
+             */
+            static __extendClass__( target, extender ){
+
+                  return class extends target {
+                        constructor(){
+                              super();
+                              this.#deepCpyExtenderObj( extender )
+                        }
+                        /**
+                         * 
+                         * @param {Object} obj 
+                         * @returns 
+                         */
+                        #deepCpyExtenderObj( obj ){
+                              if( !obj && typeof obj !== 'object' )
+                                    return;
+
+                              for( const k of Object.keys(obj) ){
+                                    const d = Object.getOwnPropertyDescriptor( obj, k );
+                                    
+                                    if( !('get' in d) && !('set' in d)  && typeof d.value !== 'function' ){
+                                          Object.defineProperty( 
+                                                this,
+                                                k,
+                                                JSON.parse( JSON.stringify( d ) ),  
+                                          ); 
+                                    }else{
+                                          Object.defineProperty( 
+                                                this,
+                                                k,
+                                                d,  
+                                          ); 
+                                    }
+
+                              }
+                        }
+                  }
+            }
             
             constructor(){
                   super();
 
-                  this.descriptor = new Cloner( cloneable ).clone( this );
+                  this.descriptor = new Cloner( Object.getPrototypeOf( this ).constructor.cloneable ).clone( this );
 
                   this.#shadow = this.attachShadow({ mode: 'open' });
                   this.#shadow.appendChild( 
                         this.descriptor.dom
                   );
 
-                  this.#deepCpyExtenderObj( extender );
                   this.#createReactiveProperties();
                   
             }
 
-            /**
-             * 
-             * @param {Object} obj 
-             * @returns 
-             */
-            #deepCpyExtenderObj( obj ){
-                  if( !obj && typeof obj !== 'object' )
-                        return;
-
-                  for( const k of Object.keys(obj) ){
-                        const d = Object.getOwnPropertyDescriptor( obj, k );
-                        
-                        if( !('get' in d) && !('set' in d)  && typeof d.value !== 'function' ){
-                              Object.defineProperty( 
-                                    this,
-                                    k,
-                                    JSON.parse( JSON.stringify( d ) ),  
-                              ); 
-                        }else{
-                              Object.defineProperty( 
-                                    this,
-                                    k,
-                                    d,  
-                              ); 
-                        }
-
-                  }
-            }
+            
             #createReactiveProperties(){
                   for( const [k,v] of this.descriptor.directBindings.entries() ){
                         this.#makePropReactive( k );
@@ -94,7 +113,8 @@ const HTMLReactiveElement = ( name, watched, extender, cloneable ) =>{
                         this.#makePropReactive( k );
                   }
 
-                  for( const k of C.observedAttributes ){
+                  const observed = Object.getPrototypeOf( this ).constructor.observedAttributes;
+                  for( const k of observed ){
                         if( this.descriptor.loops.has( k ) )
                               continue;
                         this.#makePropReactive( k );
@@ -535,11 +555,9 @@ const HTMLReactiveElement = ( name, watched, extender, cloneable ) =>{
              */
             #updateDuplicatedProperties( queue ){
                   for( const n of queue ){
-                        if( C.#isRefToLoop( n ) ){
+                        if( HTMLReactiveElement.#isRefToLoop( n ) ){
                               this.updateLoopNode( n.descriptor );
                         }else{
-                              console.log(n.descriptor.attributeName)
-
                               this.#updateTemplateCopies( n.descriptor );
                         }
                   }
@@ -577,7 +595,7 @@ const HTMLReactiveElement = ( name, watched, extender, cloneable ) =>{
                   this.#duplicateAllBindingAndRef( list );
                   
                   for( const linkToProp of linkedProps ){
-                        if( !C.#isRefToLoop( linkToProp ) )
+                        if( !HTMLReactiveElement.#isRefToLoop( linkToProp ) )
                               this.#getDuplicateReferenceByKey( list, linkToProp.key, linkToProp.descriptor );
                         queue.push( linkToProp );
                   }
@@ -673,8 +691,8 @@ const HTMLReactiveElement = ( name, watched, extender, cloneable ) =>{
                         }
                   }
       }
-      }
 }
 
-export default HTMLReactiveElement;
+
+//export default HTMLReactiveElement;
 

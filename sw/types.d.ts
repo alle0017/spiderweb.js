@@ -154,7 +154,19 @@ type ReactiveProperties = {
       eventsMap: Map<number, Scope<EventDescriptor>[]>
 
 }
-
-
- 
- 
+type CompilerFlags = {
+      __MARKDOWN: boolean,
+      __NO_COMPILE: boolean,
+      __CACHE_IN_LOCAL_STORAGE: boolean,
+}
+type ElementDescriptor = ({
+      template: string;
+      name: string;
+      props: {
+          [x: string]: any;
+      } & import("./custom-element.js").HTMLCustomElement;
+      watched: Array<string>;
+} | {
+      name: string;
+      component: typeof import("./swcomponent.js").default
+}) & CompilerFlags;

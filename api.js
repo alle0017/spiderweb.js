@@ -1,28 +1,36 @@
-import { createCustomElement } from "./sw/custom-element.js";
+import { createCustomExtensibleElement, createCustomElement } from "./sw/custom-element.js";
 import MDParser from "./sw/md.js";
 import { include, imports } from "./sw/ui.js";
 import { Router } from "./sw/router.js";
+import SWComponent from "./sw/swcomponent.js";
 
 /**
- * @typedef {Object} ElementDescriptor
- * @property {string} template
- * @property {string} name
- * @property {Object.<string, any> & import("./sw/custom-element.js").HTMLCustomElement } props
- * @property {boolean} markdown
- * @property {Array<string>} watched
+ * @param {ElementDescriptor} descriptor 
  */
-
-/**@param {ElementDescriptor} descriptor */
 export const define = ( descriptor )=>{
-      if( descriptor.markdown ){
-            descriptor.template = new MDParser(descriptor.template).toHTML();
+      if( descriptor.__MARKDOWN ){
+            if( 'template' in descriptor){
+                  descriptor.template = new MDParser(descriptor.template).toHTML();
+            }else{
+                  descriptor.component.html = new MDParser(descriptor.component.html).toHTML();
+            }
       }
-      createCustomElement(
-            descriptor.name,
-            descriptor.template,
-            descriptor.props,
-            descriptor.watched
-      );
+
+      if( 'template' in descriptor){
+            createCustomExtensibleElement(
+                  descriptor.name,
+                  descriptor.template,
+                  descriptor.props,
+                  descriptor.watched
+            );
+      }else{
+            createCustomElement(
+                  descriptor.name,
+                  descriptor.component
+            );
+      }
+
+      
 }
 
 /**
@@ -44,4 +52,5 @@ export const append = (name, props = {}, node = document.body)=>{
  */
 export const initialize = ( componentName, root = document.body ) => root.appendChild( document.createElement( componentName ) );
 
-export { MDParser, include, imports, Router }
+export { MDParser, include, imports, Router };
+export default SWComponent;
