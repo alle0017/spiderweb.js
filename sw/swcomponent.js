@@ -15,18 +15,7 @@ export default class SWComponent extends HTMLReactiveElement {
        */
       static watch = [];
 
-      /**
-       * @ignore
-       */
-      static __initializer__(){
-            this.cloneable = new Parser().createReactiveCloneable( this.html );
-
-            for( let i=0; i < this.watch.length; i++ ){
-                  this.cloneable.usedProperties.add( this.watch[ i ] );
-            }
-
-            this.observedAttributes = [...this.cloneable.usedProperties.values()];
-      }
+      static __NO_COMPILE = false;
 
       /**@type {Object.<string,HTMLElement>} */
       refs = {};
@@ -153,8 +142,3 @@ export default class SWComponent extends HTMLReactiveElement {
             document.body.removeEventListener( 'keydown', this.#shortcuts[ shortcutKey ].down );
       }
 }
-
-class X extends SWComponent {
-      static html = '<div>'
-}
-X.__initializer__();

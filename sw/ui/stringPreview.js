@@ -12,7 +12,6 @@ define({
             </style>
       `,
       props: {
-            _fullStr: '',
             _max: 10,
             get text(){
                   return this._fullStr;
@@ -35,6 +34,8 @@ define({
             onenter(){
                   const max = this.getAttribute('max');
                   const value = this.getAttribute('text');
+
+                  this._fullStr = '';
                   
                   if( max )
                         this.max = parseInt(max);

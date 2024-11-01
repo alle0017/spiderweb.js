@@ -128,6 +128,11 @@ export class Parser {
        */
       #usedProperties = new Set();
 
+      /**
+       * @type {Stack<SoftRef<LoopCloneableDescriptor>>}
+       */
+      #loopsStack = [];
+
       get __pointer(){
             return (this.#elementId++) + '';
       }
@@ -621,10 +626,10 @@ export class Parser {
       ```  
        */
       #addExternReferenceToLoop( node, scope, isFor, id, index ){
-            const loop = this.#loopMap.get( scope.at(-1) ).at(-1);
+            //const loop = this.#loopMap.get( scope.at(-1) ).at(-1);
             const key = parseInt( node.getAttribute( Parser.REF_CLASS ) ) || this.#id;
 
-            loop.refs.push({
+            this.#loopsStack.at( -1 ).refs.push({
                   key,
                   isFor,
                   refKey: {
@@ -684,6 +689,8 @@ export class Parser {
                   );
             }
 
+            this.#loopsStack.push( loopDesc );
+
             if( node.hasChildNodes() ){
                   const map = this.#forPropertiesMap;
                   
@@ -697,6 +704,8 @@ export class Parser {
                         );
                   }
             }
+
+            this.#loopsStack.pop();
       }
 
       /**
@@ -787,10 +796,12 @@ export class Parser {
        * @returns {ReactiveCloneable}
        */
       createReactiveCloneable( html ){
-            const dom = new DOMParser().parseFromString( html, "text/html" ).body;
+            const body = new DOMParser().parseFromString( html, "text/html" ).body;
+            const dom = document.createElement('span');
+            
+            dom.append( ...body.children )
 
             const propertiesMap = this.#traverse( dom, undefined, [], [], null );
-
 
             /**
              * @type {ReactiveCloneable}

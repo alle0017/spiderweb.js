@@ -20,13 +20,15 @@ export const define = ( descriptor )=>{
             createCustomExtensibleElement(
                   descriptor.name,
                   descriptor.template,
+                  descriptor.__NO_COMPILE,
                   descriptor.props,
                   descriptor.watched
             );
       }else{
             createCustomElement(
                   descriptor.name,
-                  descriptor.component
+                  descriptor.component,
+                  descriptor.__NO_COMPILE
             );
       }
 

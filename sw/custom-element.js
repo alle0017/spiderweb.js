@@ -4,37 +4,97 @@ import SWComponent from "./swcomponent.js";
 
 
 /**
- * @param {string} name
  * @param {string} html 
- * @param {Object} extender,
  * @param {string[]} watch
+ * @returns {ReactiveCloneable}
  */
-export const createCustomExtensibleElement = ( name, html, extender = {}, watch = [] )=>{
-
+export const toCloneable = (html, watch = []) =>{
       const parser = new Parser();
       const cloneable = parser.createReactiveCloneable( html );
+
 
 
       for( let i=0; i < watch.length; i++ ){
             cloneable.usedProperties.add( watch[ i ] );
       }
 
+      return cloneable;
+}
+
+/**
+ * @param {string} html 
+ * @returns {ReactiveCloneable}
+ */
+export const defaultCloneable = ( html )=>{
+      return {
+            dom:  new DOMParser().parseFromString( html, "text/html" ).body,
+            properties: new Map(),
+            loops: new Map(),
+            loopsProperties: new Map(),
+            conditionals: new Map(),
+            events: [],
+            bindings: new Map(),
+            directBindings: new Map(),
+            conditionalRefSet: new Map(),
+            eventsMap: new Map(),
+            usedProperties: new Set(),
+      };
+}
+
+
+
+/**
+ * @param {string} name
+ * @param {string} html 
+ * @param {boolean} __NO_COMPILE
+ * @param {Object} extender,
+ * @param {string[]} watch
+ */
+export const createCustomExtensibleElement = ( name, html, __NO_COMPILE, extender = {}, watch = [] )=>{
+
+      
+      /*const parser = new Parser();
+      const cloneable = parser.createReactiveCloneable( html );
+
+
+
+      for( let i=0; i < watch.length; i++ ){
+            cloneable.usedProperties.add( watch[ i ] );
+      }*/
+      let cloneable;
+
+      if( __NO_COMPILE ){
+            cloneable = defaultCloneable( html );
+      }else{
+            cloneable = toCloneable( html, watch );
+      }
+
       customElements.define( name, HTMLReactiveElement.__extendClass__( class extends SWComponent {
             static cloneable = cloneable;
             static observedAttributes = [...cloneable.usedProperties.values()];
+            static __NO_COMPILE = __NO_COMPILE;
       }, extender ) );
 }
 /**
  * @param {string} name
  * @param {typeof SWComponent} element
+ * @param {boolean} __NO_COMPILE
  */
-export const createCustomElement = ( name, element )=>{
+export const createCustomElement = ( name, element, __NO_COMPILE )=>{
 
-      element.cloneable = new Parser().createReactiveCloneable( element.html );
+      /*element.cloneable = new Parser().createReactiveCloneable( element.html );
 
       for( let i=0; i < element.watch.length; i++ ){
             element.cloneable.usedProperties.add( element.watch[ i ] );
+      }*/
+
+      if( __NO_COMPILE ){
+            element.cloneable = defaultCloneable( element.html );
+            element.__NO_COMPILE = true;
+      }else{
+            element.cloneable = toCloneable( element.html, element.watch );
       }
+
 
       element.observedAttributes = [...element.cloneable.usedProperties.values()];
 

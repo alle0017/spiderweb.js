@@ -60,7 +60,7 @@ type LoopDescriptor = {
       /**
        * reference to all the copies of the loop
        */
-      copies: Array<ExternRef>,
+      copies: Ref<Copy<{}>>[]//Array<ExternRef>,
 }
 
 
@@ -133,6 +133,7 @@ type ReactiveCloneable = {
       //toDelete: string[];
 }
 
+
 type ReactiveProperties = {
 
       dom: HTMLElement,
@@ -157,8 +158,8 @@ type ReactiveProperties = {
 type CompilerFlags = {
       __MARKDOWN: boolean,
       __NO_COMPILE: boolean,
-      __CACHE_IN_LOCAL_STORAGE: boolean,
 }
+
 type ElementDescriptor = ({
       template: string;
       name: string;
@@ -170,3 +171,14 @@ type ElementDescriptor = ({
       name: string;
       component: typeof import("./swcomponent.js").default
 }) & CompilerFlags;
+
+interface Stack<T> {
+      push( v: T ): void;
+      pop(): T;
+      at( index: -1 ): T;
+      length: number;
+}
+
+type Replicable = {
+      copies: Ref<Copy<PropertyCopy>>[];
+}

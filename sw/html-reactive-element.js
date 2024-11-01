@@ -15,6 +15,11 @@ export default class HTMLReactiveElement extends HTMLElement {
             static cloneable = null;
 
             /**
+             * @type {boolean}
+             */
+            static __NO_COMPILE = false;
+
+            /**
              * @type {Object}
              */
             //static extender = {};
@@ -83,14 +88,25 @@ export default class HTMLReactiveElement extends HTMLElement {
             constructor(){
                   super();
 
-                  this.descriptor = new Cloner( Object.getPrototypeOf( this ).constructor.cloneable ).clone( this );
+                  const proto = Object.getPrototypeOf( this );
+
+                  if( !proto.constructor.__NO_COMPILE ){
+                        this.descriptor = new Cloner( proto.constructor.cloneable ).clone( this );
+                  }else{
+                        this.descriptor = {
+                              ...proto.constructor.cloneable,
+                              dom: /**@type {HTMLElement}*/((/**@type {ReactiveCloneable}*/(proto.constructor.cloneable)).dom.cloneNode( true )),
+                        }
+                  }
+
 
                   this.#shadow = this.attachShadow({ mode: 'open' });
                   this.#shadow.appendChild( 
                         this.descriptor.dom
                   );
 
-                  this.#createReactiveProperties();
+                  if( !proto.constructor.__NO_COMPILE )
+                        this.#createReactiveProperties();
                   
             }
 
@@ -237,7 +253,7 @@ export default class HTMLReactiveElement extends HTMLElement {
                   }
                   if( this.descriptor.conditionals.has( name ) ){
                         const conditionals = this.descriptor.conditionals.get( name );
-                        //TODO remove this 
+                        
                         for( const cond of conditionals ){
                               if( cond.copies && cond.copies.length > 0 ){
                                     for( const c of cond.copies ){
@@ -451,7 +467,7 @@ export default class HTMLReactiveElement extends HTMLElement {
              * get the reference to a property (template, binding, condition, etc...) that is used into a loop
              * @param {DuplicateNode[]} list 
              * @param {number} key 
-             * @param {Ref<ReactiveProperty>} descriptor 
+             * @param {Replicable} descriptor 
              */
             #getDuplicateReferenceByKey( list, key, descriptor ){
                   // check if is a condition
@@ -485,6 +501,7 @@ export default class HTMLReactiveElement extends HTMLElement {
                               scope: n.scope,
                         });
                   }
+
             }
             /**
              * 
@@ -537,8 +554,8 @@ export default class HTMLReactiveElement extends HTMLElement {
                         }     
                   }
             }
+            // TODO check if the list can be appended not directly to a father
             /**
-             * 
              * @param {HTMLElement} root 
              * @param {DuplicateNode[]} list 
              */
@@ -585,7 +602,7 @@ export default class HTMLReactiveElement extends HTMLElement {
                    * @type {DuplicateNode[]}
                    */
                   const list = this.#createModelDuplicates( model, variable, scope );
-                        //.concat( this.#appendConditionalTags( model, scope, variable ) );
+                  
                   /**
                    * @type {ExternRef[]}
                    */
@@ -593,10 +610,9 @@ export default class HTMLReactiveElement extends HTMLElement {
 
                   this.#duplicateConditionalReference( list, model, scope, variable );
                   this.#duplicateAllBindingAndRef( list );
-                  
+
                   for( const linkToProp of linkedProps ){
-                        if( !HTMLReactiveElement.#isRefToLoop( linkToProp ) )
-                              this.#getDuplicateReferenceByKey( list, linkToProp.key, linkToProp.descriptor );
+                        this.#getDuplicateReferenceByKey( list, linkToProp.key, linkToProp.descriptor );
                         queue.push( linkToProp );
                   }
 
@@ -658,7 +674,6 @@ export default class HTMLReactiveElement extends HTMLElement {
             }
 
             /**
-             * //TODO check
             * @param {Ref<LoopDescriptor>} node  
             */
             updateLoopNode( node ){
@@ -682,10 +697,10 @@ export default class HTMLReactiveElement extends HTMLElement {
                   }else{
                         for( const copy of node.copies ){
                               this.#loopUpdate( 
-                                    copy.descriptor.rootNode, 
+                                    copy.rootNode, 
                                     node.model, 
                                     node.variable, 
-                                    copy.descriptor.scope, 
+                                    copy.scope, 
                                     node.refs 
                               );
                         }

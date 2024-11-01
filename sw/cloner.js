@@ -72,9 +72,6 @@ export default class Cloner {
 
             return rmap;
       }
-      //TODO
-      //riscrivere la parte di copy perchè sennò ogni ref singola ha una copia nuova dell'array
-      // hint: usa v[i].rootClass come chiave di una mappa dove tieni gli array
       #cloneLoopedProperties(){
             /**
              * @type {Map<string, Ref<ReactiveProperty>[]>}
